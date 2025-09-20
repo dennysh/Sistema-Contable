@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba de Contadores</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .counter { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; margin: 5px; }
+        .button:hover { background: #0056b3; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Prueba de Contadores del Sistema Contable</h1>
+        
+        <div class="counter">
+            <h3>Contadores Actuales:</h3>
+            <div id="counts-display">Cargando...</div>
+        </div>
+        
+        <div>
+            <button class="button" onclick="refreshCounts()">Actualizar Contadores</button>
+            <button class="button" onclick="testCreateClient()">Crear Cliente de Prueba</button>
+            <button class="button" onclick="testCreateInvoice()">Crear Factura de Prueba</button>
+        </div>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+        // Función para obtener contadores
+        async function fetchCounts() {
+            try {
+                const response = await fetch('http://localhost:5000/api/counts');
+                const counts = await response.json();
+                return counts;
+            } catch (error) {
+                console.error('Error fetching counts:', error);
+                return null;
+            }
+        }
+
+        // Función para mostrar contadores
+        function displayCounts(counts) {
+            const display = document.getElementById('counts-display');
+            if (counts) {
+                display.innerHTML = `
+                    <p><strong>Clientes:</strong> ${counts.clientes || 0}</p>
+                    <p><strong>Proveedores:</strong> ${counts.proveedores || 0}</p>
+                    <p><strong>Cuentas Bancarias:</strong> ${counts.cuentas_bancarias || 0}</p>
+                    <p><strong>Artículos:</strong> ${counts.articulos || 0}</p>
+                    <p><strong>Facturas de Venta:</strong> ${counts.facturas_venta || 0}</p>
+                    <p><strong>Facturas de Compra:</strong> ${counts.facturas_compra || 0}</p>
+                    <p><strong>Recibos:</strong> ${counts.recibos || 0}</p>
+                    <p><strong>Pagos:</strong> ${counts.pagos || 0}</p>
+                    <p><strong>Empleados:</strong> ${counts.empleados || 0}</p>
+                    <p><strong>Recibos de Nómina:</strong> ${counts.recibos_nomina || 0}</p>
+                    <p><strong>Activos Fijos:</strong> ${counts.activos_fijos || 0}</p>
+                    <p><strong>Asientos Contables:</strong> ${counts.asientos_contables || 0}</p>
+                `;
+            } else {
+                display.innerHTML = '<p class="error">Error al cargar contadores</p>';
+            }
+        }
+
+        // Función para actualizar contadores
+        async function refreshCounts() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<p>Actualizando contadores...</p>';
+            
+            const counts = await fetchCounts();
+            displayCounts(counts);
+            
+            if (counts) {
+                status.innerHTML = '<p class="success">Contadores actualizados correctamente</p>';
+            } else {
+                status.innerHTML = '<p class="error">Error al actualizar contadores</p>';
+            }
+        }
+
+        // Función para crear cliente de prueba
+        async function testCreateClient() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<p>Creando cliente de prueba...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:5000/api/clientes', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        nombre: `Cliente Prueba ${Date.now()}`,
+                        rfc: 'TEST123456789',
+                        direccion: 'Dirección de prueba',
+                        telefono: '555-0123',
+                        email: 'prueba@test.com'
+                    })
+                });
+                
+                if (response.ok) {
+                    status.innerHTML = '<p class="success">Cliente creado correctamente</p>';
+                    // Actualizar contadores después de crear
+                    setTimeout(refreshCounts, 500);
+                } else {
+                    status.innerHTML = '<p class="error">Error al crear cliente</p>';
+                }
+            } catch (error) {
+                status.innerHTML = '<p class="error">Error de conexión</p>';
+            }
+        }
+
+        // Función para crear factura de prueba
+        async function testCreateInvoice() {
+            const status = document.getElementById('status');
+            status.innerHTML = '<p>Creando factura de prueba...</p>';
+            
+            try {
+                // Primero necesitamos un cliente y un artículo
+                const clientResponse = await fetch('http://localhost:5000/api/clientes');
+                const clients = await clientResponse.json();
+                
+                const articleResponse = await fetch('http://localhost:5000/api/articulos');
+                const articles = await articleResponse.json();
+                
+                if (clients.length === 0 || articles.length === 0) {
+                    status.innerHTML = '<p class="error">Necesitas tener al menos un cliente y un artículo</p>';
+                    return;
+                }
+                
+                const response = await fetch('http://localhost:5000/api/facturas-venta', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        fecha: new Date().toISOString().split('T')[0],
+                        cliente_id: clients[0].id,
+                        detalles: [{
+                            articulo_id: articles[0].id,
+                            cantidad: 1,
+                            precio_unitario: 100.00
+                        }]
+                    })
+                });
+                
+                if (response.ok) {
+                    status.innerHTML = '<p class="success">Factura creada correctamente</p>';
+                    // Actualizar contadores después de crear
+                    setTimeout(refreshCounts, 500);
+                } else {
+                    status.innerHTML = '<p class="error">Error al crear factura</p>';
+                }
+            } catch (error) {
+                status.innerHTML = '<p class="error">Error de conexión</p>';
+            }
+        }
+
+        // Cargar contadores al iniciar
+        window.onload = function() {
+            refreshCounts();
+        };
+    </script>
+</body>
+</html>
